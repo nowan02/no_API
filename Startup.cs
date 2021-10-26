@@ -58,7 +58,7 @@ namespace no_API
                     });   
                 });
 
-                endpoints.MapGet("/api/getTask/{file:required}", async context => {
+                endpoints.MapGet("/api/tasks/{file:required}", async context => {
                     var FileName = context.Request.RouteValues["file"];
                     Task<string> Contains;
                     try
@@ -72,6 +72,20 @@ namespace no_API
                     catch
                     {
                        _ = context.Response.WriteAsync($"No file exists with name '{FileName}'");
+                    }
+                });
+
+                endpoints.MapDelete("/api/tasks/{file:required}", async context => {
+                    var FileName = context.Request.RouteValues["file"];
+                    _ = context.Response.WriteAsync($"The file '{FileName}' will be deleted");
+                    try
+                    {
+                        File.Delete($"uploads/{FileName}");
+                        _ = context.Response.WriteAsync($"'{FileName}' was successfully deleted.");
+                    }
+                    catch
+                    {
+                       _ = context.Response.WriteAsync($"No file exists with name '{FileName}'.");
                     }
                 });
             });
