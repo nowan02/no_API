@@ -32,7 +32,7 @@ namespace no_API
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapPost("/upload", async context =>
+                endpoints.MapPost("/api/upload", async context =>
                 {
                     string FileName = "";
 
@@ -51,11 +51,28 @@ namespace no_API
                     }
 
                     Task Writer = Body.ContinueWith(async Writing => {
-                        using(StreamWriter sw = new StreamWriter(FileName))
+                        using(StreamWriter sw = new StreamWriter($"uploads/{FileName}"))
                         {
                             _ = sw.WriteLineAsync($"{await Body}");
                         }
                     });   
+                });
+
+                endpoints.MapGet("/api/getTask/{file:required}", async context => {
+                    var FileName = context.Request.RouteValues["file"];
+                    Task<string> Contains;
+                    try
+                    {
+                        using(StreamReader sr = new ($"uploads/{FileName}"))
+                        {
+                            Contains = sr.ReadToEndAsync();
+                            _ = context.Response.WriteAsync($"The file '{FileName}' Contains the following:\n{await Contains}\n");
+                        }
+                    }
+                    catch
+                    {
+                       _ = context.Response.WriteAsync($"No file exists with name '{FileName}'");
+                    }
                 });
             });
         }
