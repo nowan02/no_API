@@ -14,8 +14,8 @@ namespace no_API
 {
     public class JsonObject 
     {
-        public string Taskbody;
-        public string Upload;
+        public string Taskbody {get; set;}
+        public string Upload {get; set;}
         public static List<JsonObject> Cache = new List<JsonObject>();
     }
 
@@ -103,15 +103,26 @@ namespace no_API
 
                 endpoints.MapGet("/api/tasks/{file:required}/{key:required}", async context => {
                     var FileName = context.Request.RouteValues["file"];
-                    var searchKey = context.Request.RouteValues["key"];
+                    var SearchKey = context.Request.RouteValues["key"];
                     try
                     {
                         using(StreamReader sr = new ($"uploads/{FileName}.json"))
                         {
                             string Contains = await sr.ReadToEndAsync();
-                            JsonObject Deserialised = JsonSerializer.Deserialize<JsonObject>(Contains);
-                            _ = context.Response.WriteAsync($"{Deserialised.Taskbody} {Deserialised.Upload}");
-                            AddToCache(Deserialised);
+                            JsonObject Json = JsonSerializer.Deserialize<JsonObject>(Contains);
+
+                            switch(SearchKey)
+                            {
+                                default:
+                                    _ = context.Response.WriteAsync($"No keys named {SearchKey} exist in the file.");
+                                    break;
+                                case "Taskbody":
+                                    _ = context.Response.WriteAsync($"The searched key's value holds: {Json.Taskbody}");
+                                    break;
+                                case "Upload":
+                                    _ = context.Response.WriteAsync($"The searched key's value holds: {Json.Upload}");
+                                    break;
+                            }
                         }
                     }
                     catch
