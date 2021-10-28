@@ -16,25 +16,35 @@ namespace no_API
     {
         public string Taskbody {get; set;}
         public string Upload {get; set;}
-        public static List<JsonObject> Cache = new List<JsonObject>();
+        public static Dictionary<string,JsonObject> Cache = new Dictionary<string, JsonObject>();
     }
 
     public class Startup
     {
-        public static void AddToCache(JsonObject Json)
+        public static async Task<JsonObject> DeserialiserAsync(string File)
         {
-            JsonObject.Cache.Capacity = 5;
-            foreach(JsonObject J in JsonObject.Cache)
+            Task<string> Contains;
+            using(StreamReader sr = new ($"uploads/{File}.json"))
             {
-                if(J.Equals(Json))
-                {
-                    Console.WriteLine("Nothing replaced in cache, continue.");
-                    return;
-                }
+                Contains = sr.ReadToEndAsync();
             }
-            JsonObject.Cache.Insert(0, Json);
+            return JsonSerializer.Deserialize<JsonObject>($"{await Contains}");
+        }
+
+        public static async Task<JsonObject> SearchCacheAsync(string File)
+        {
+            JsonObject.Cache.EnsureCapacity(5);
+            if(JsonObject.Cache.ContainsKey(File))
+            {
+                Console.WriteLine("File already in cache, continue");
+                return JsonObject.Cache[File];
+            }
+
+            JsonObject Deser = await DeserialiserAsync(File);
+            JsonObject.Cache.Add(File, Deser);
             JsonObject.Cache.TrimExcess();
             Console.WriteLine("Cache updated.");
+            return Deser;
         }
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
@@ -104,25 +114,22 @@ namespace no_API
                 endpoints.MapGet("/api/tasks/{file:required}/{key:required}", async context => {
                     var FileName = context.Request.RouteValues["file"];
                     var SearchKey = context.Request.RouteValues["key"];
+
                     try
                     {
-                        using(StreamReader sr = new ($"uploads/{FileName}.json"))
+                        JsonObject Json = await SearchCacheAsync($"{FileName}");
+                        
+                        switch(SearchKey)
                         {
-                            string Contains = await sr.ReadToEndAsync();
-                            JsonObject Json = JsonSerializer.Deserialize<JsonObject>(Contains);
-
-                            switch(SearchKey)
-                            {
-                                default:
-                                    _ = context.Response.WriteAsync($"No keys named {SearchKey} exist in the file.");
-                                    break;
-                                case "Taskbody":
-                                    _ = context.Response.WriteAsync($"The searched key's value holds: {Json.Taskbody}");
-                                    break;
-                                case "Upload":
-                                    _ = context.Response.WriteAsync($"The searched key's value holds: {Json.Upload}");
-                                    break;
-                            }
+                            default:
+                                _ = context.Response.WriteAsync($"No keys named {SearchKey} exist in the file.");
+                                break;
+                            case "Taskbody":
+                                _ = context.Response.WriteAsync($"The searched key's value holds: {Json.Taskbody}");
+                                break;
+                            case "Upload":
+                                _ = context.Response.WriteAsync($"The searched key's value holds: {Json.Upload}");
+                                break;
                         }
                     }
                     catch
