@@ -21,30 +21,41 @@ namespace no_API
 
     public class Startup
     {
-        public static async Task<JsonObject> DeserialiserAsync(string File)
+        public static async Task<JsonObject> DeserialiserAsync(object File, HttpContext c)
         {
             Task<string> Contains;
+
             using(StreamReader sr = new ($"uploads/{File}.json"))
             {
                 Contains = sr.ReadToEndAsync();
+                return JsonSerializer.Deserialize<JsonObject>($"{await Contains}");
             }
-            return JsonSerializer.Deserialize<JsonObject>($"{await Contains}");
         }
 
-        public static async Task<JsonObject> SearchCacheAsync(string File)
+        public static async Task<JsonObject> SearchCacheAsync(object File, HttpContext c)
         {
-            JsonObject.Cache.EnsureCapacity(5);
-            if(JsonObject.Cache.ContainsKey(File))
+            try
             {
-                Console.WriteLine("File already in cache, continue");
-                return JsonObject.Cache[File];
-            }
+                JsonObject.Cache.EnsureCapacity(5);
+                if(JsonObject.Cache.ContainsKey($"{File}"))
+                {
+                    Console.WriteLine("File already in cache, continue");
+                    return JsonObject.Cache[$"{File}"];
+                }
 
-            JsonObject Deser = await DeserialiserAsync(File);
-            JsonObject.Cache.Add(File, Deser);
-            JsonObject.Cache.TrimExcess();
-            Console.WriteLine("Cache updated.");
-            return Deser;
+                JsonObject Deser = await DeserialiserAsync($"{File}",c);
+
+                JsonObject.Cache.Add($"{File}", Deser);
+                JsonObject.Cache.TrimExcess();
+                Console.WriteLine("Cache updated.");
+                return Deser;
+            }
+            catch
+            {
+                _ = c.Response.WriteAsync($"No file named {File} exists");
+                JsonObject error = new JsonObject();
+                return error;
+            }
         }
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
@@ -115,26 +126,23 @@ namespace no_API
                     var FileName = context.Request.RouteValues["file"];
                     var SearchKey = context.Request.RouteValues["key"];
 
-                    try
+                    JsonObject Json = await SearchCacheAsync(FileName, context);
+                    if(Json.Taskbody == null)
                     {
-                        JsonObject Json = await SearchCacheAsync($"{FileName}");
-                        
-                        switch(SearchKey)
-                        {
-                            default:
-                                _ = context.Response.WriteAsync($"No keys named {SearchKey} exist in the file.");
-                                break;
-                            case "Taskbody":
-                                _ = context.Response.WriteAsync($"The searched key's value holds: {Json.Taskbody}");
-                                break;
-                            case "Upload":
-                                _ = context.Response.WriteAsync($"The searched key's value holds: {Json.Upload}");
-                                break;
-                        }
+                        return;
                     }
-                    catch
+
+                    switch(SearchKey)
                     {
-                       _ = context.Response.WriteAsync($"No file exists with name '{FileName}'");
+                        default:
+                            _ = context.Response.WriteAsync($"No keys named {SearchKey} exist in the file.");
+                            break;
+                        case "Taskbody":
+                            _ = context.Response.WriteAsync($"The searched key's value holds: {Json.Taskbody}");
+                            break;
+                        case "Upload":
+                            _ = context.Response.WriteAsync($"The searched key's value holds: {Json.Upload}");
+                            break;
                     }
                 });
 
