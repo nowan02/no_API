@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -12,15 +11,36 @@ using Microsoft.Extensions.Hosting;
 
 namespace no_API
 {
+    /// <summary>
+    /// Class <c>JsonObject</c>: 
+    /// The object the API uses to deserialise
+    /// json files into, it includes the cache Dictionary
+    /// <c>JsonObject.Cache</c>
+    /// </summary>
+
     public class JsonObject 
     {
+        /// <summary>
+        /// <c>JsonObject.TaskBody</c>:
+        /// The string representation of the task.
+        /// </summary>
         public string Taskbody {get; set;}
+        /// <summary>
+        /// <c>JsonObject.Upload</c>
+        /// The string representation of when the json was uploaded.
+        /// </summary>
         public string Upload {get; set;}
         public static Dictionary<string,JsonObject> Cache = new Dictionary<string, JsonObject>();
     }
 
     public class Startup
     {
+        ///<summary>
+        /// <c>Startup.DeserialiserAsync()</c>:
+        /// Asyncronous function that returns the deserialised json file as a 
+        /// <c>JsonObject</c>
+        ///</summary>.
+
         public static async Task<JsonObject> DeserialiserAsync(object File, HttpContext c)
         {
             Task<string> Contains;
@@ -31,6 +51,19 @@ namespace no_API
                 return JsonSerializer.Deserialize<JsonObject>($"{await Contains}");
             }
         }
+
+        /// <summary>
+        /// <c>Startup.SearchCacheAsync</c>:
+        /// Checks the Cache for already deserialised jsons
+        /// If its not in the cache, it deserialises using
+        /// <c>Startup.DeserialiseAsync</c>
+        /// then adds the new element.
+        /// Since the capacity is specified, it is then 
+        /// trimmed to remove the oldest JsonObject.
+        /// If a file could not be deserialised or doesn't exist
+        /// it returns an empty 
+        /// <c>JsonObject</c>.
+        /// </summary>
 
         public static async Task<JsonObject> SearchCacheAsync(object File, HttpContext c)
         {
@@ -75,7 +108,7 @@ namespace no_API
             app.UseRouting();
 
             app.UseEndpoints(endpoints =>
-            {
+            { 
                 endpoints.MapPost("/api/upload", async context =>
                 {
                     string FileName = "";
