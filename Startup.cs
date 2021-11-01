@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+// Testing Namespaces
+using System.Reflection;
 
 namespace no_API
 {
@@ -41,7 +43,7 @@ namespace no_API
         /// <c>JsonObject</c>
         ///</summary>.
 
-        public static async Task<JsonObject> DeserialiserAsync(object File, HttpContext c)
+        public static async Task<JsonObject> DeserialiserAsync(object File)
         {
             Task<string> Contains;
 
@@ -65,7 +67,7 @@ namespace no_API
         /// <c>JsonObject</c>.
         /// </summary>
 
-        public static async Task<JsonObject> SearchCacheAsync(object File, HttpContext c)
+        public static async Task<JsonObject> SearchCacheAsync(object File)
         {
             try
             {
@@ -76,7 +78,7 @@ namespace no_API
                     return JsonObject.Cache[$"{File}"];
                 }
 
-                JsonObject Deser = await DeserialiserAsync($"{File}",c);
+                JsonObject Deser = await DeserialiserAsync($"{File}");
 
                 JsonObject.Cache.Add($"{File}", Deser);
                 JsonObject.Cache.TrimExcess();
@@ -85,7 +87,6 @@ namespace no_API
             }
             catch
             {
-                _ = c.Response.WriteAsync($"No file named {File} exists");
                 JsonObject error = new JsonObject();
                 return error;
             }
@@ -94,7 +95,7 @@ namespace no_API
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-
+            services.AddControllers().AddApplicationPart(Assembly.Load("no_API"));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -112,7 +113,7 @@ namespace no_API
                 endpoints.MapPost("/api/upload", async context =>
                 {
                     string FileName = "";
-
+                    
                     Random Rnd = new Random();
                     for(int i = 0; i < 10; i++) 
                     {
@@ -138,7 +139,8 @@ namespace no_API
                     });   
                 });
 
-                endpoints.MapGet("/api/tasks/{file:required}", async context => {
+                endpoints.MapGet("/api/tasks/{file:required}", async context => 
+                {
                     var FileName = context.Request.RouteValues["file"];
                     Task<string> Contains;
                     try
@@ -155,13 +157,16 @@ namespace no_API
                     }
                 });
 
-                endpoints.MapGet("/api/tasks/{file:required}/{key:required}", async context => {
+                endpoints.MapGet("/api/tasks/{file:required}/{key:required}", async context => 
+                {
+                    
                     var FileName = context.Request.RouteValues["file"];
                     var SearchKey = context.Request.RouteValues["key"];
 
-                    JsonObject Json = await SearchCacheAsync(FileName, context);
+                    JsonObject Json = await SearchCacheAsync(FileName);
                     if(Json.Taskbody == null)
                     {
+                        _ = context.Response.WriteAsync($"No file named {FileName} exists");
                         return;
                     }
 
@@ -179,7 +184,8 @@ namespace no_API
                     }
                 });
 
-                endpoints.MapDelete("/api/tasks/{file:required}", async context => {
+                endpoints.MapDelete("/api/tasks/{file:required}", async context => 
+                {
                     var FileName = context.Request.RouteValues["file"];
                     _ = context.Response.WriteAsync($"Trying to delete '{FileName}'...");
                     try
@@ -192,6 +198,8 @@ namespace no_API
                        _ = context.Response.WriteAsync($"No file exists with name '{FileName}'.");
                     }
                 });
+
+                endpoints.MapControllers();
             });
         }
     }
